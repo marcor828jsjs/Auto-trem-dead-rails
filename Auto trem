@@ -1,0 +1,114 @@
+-- Auto-Trem Dinâmico para Dead Whales (Roblox Lua)
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+
+local LocalPlayer = Players.LocalPlayer
+local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+local Humanoid = Character:WaitForChild("Humanoid")
+local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+
+-- GUI
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "AutoTremGui"
+screenGui.ResetOnSpawn = false
+screenGui.Parent = PlayerGui
+screenGui.Enabled = false
+
+local btn = Instance.new("TextButton")
+btn.Name = "ToggleButton"
+btn.Size = UDim2.new(0, 35, 0, 35)
+btn.Position = UDim2.new(0, 10, 0, 10)
+btn.BackgroundColor3 = Color3.fromRGB(0, 255, 0) -- verde
+btn.BorderSizePixel = 0
+btn.Text = "Off"
+btn.TextScaled = true
+btn.AutoButtonColor = false
+btn.Parent = screenGui
+
+-- Estilo arredondado
+local corner = Instance.new("UICorner")
+corner.CornerRadius = UDim.new(0, 8)
+corner.Parent = btn
+
+-- Suporte para arrastar o botão (mobile incluso)
+local dragging, dragInput, dragStart, startPos
+
+btn.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+		dragging = true
+		dragStart = input.Position
+		startPos = btn.Position
+		input.Changed:Connect(function()
+			if input.UserInputState == Enum.UserInputState.End then
+				dragging = false
+			end
+		end)
+	end
+end)
+
+btn.InputChanged:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseMovement then
+		dragInput = input
+	end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+	if dragging and input == dragInput then
+		local delta = input.Position - dragStart
+		btn.Position = UDim2.new(
+			startPos.X.Scale,
+			startPos.X.Offset + delta.X,
+			startPos.Y.Scale,
+			startPos.Y.Offset + delta.Y
+		)
+	end
+end)
+
+-- Variáveis de controle
+local state = "off" -- "on", "off", "brake"
+local currentSeat = nil
+
+-- Função: alternar estado
+btn.MouseButton1Click:Connect(function()
+	if state == "on" then
+		state = "brake"
+		btn.Text = "Off"
+		btn.BackgroundColor3 = Color3.fromRGB(0, 255, 0) -- verde
+	elseif state == "off" then
+		if currentSeat then
+			state = "on"
+			btn.Text = "On"
+			btn.BackgroundColor3 = Color3.fromRGB(255, 0, 0) -- vermelho
+		end
+	end
+end)
+
+-- Mostrar botão só quando estiver dirigindo
+Humanoid.Seated:Connect(function(active, seatPart)
+	if active and seatPart and seatPart:IsA("VehicleSeat") then
+		currentSeat = seatPart
+		screenGui.Enabled = true
+	else
+		currentSeat = nil
+		screenGui.Enabled = false
+		state = "off"
+		btn.Text = "Off"
+		btn.BackgroundColor3 = Color3.fromRGB(0, 255, 0) -- verde
+	end
+end)
+
+-- Loop principal (Throttle)
+RunService.RenderStepped:Connect(function()
+	if not currentSeat then return end
+
+	if state == "on" then
+		currentSeat.Throttle = 1
+	elseif state == "brake" then
+		currentSeat.Throttle = -1
+		state = "off"
+	elseif state == "off" then
+		currentSeat.Throttle = 0
+	end
+end)
