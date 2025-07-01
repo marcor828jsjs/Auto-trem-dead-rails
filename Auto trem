@@ -9,6 +9,11 @@ local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
 local Humanoid = Character:WaitForChild("Humanoid")
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 
+-- Se já existir o GUI, não cria de novo
+if PlayerGui:FindFirstChild("AutoTremGui") then
+    return
+end
+
 -- GUI
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "AutoTremGui"
